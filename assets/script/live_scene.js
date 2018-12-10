@@ -34,8 +34,11 @@ cc.Class({
         this.live_status = LIVE_STATUS.INITIALIZING;
         this.set_physics_enable();
         this.node.on(cc.Node.EventType.TOUCH_START, this._on_touch_start, this);
-        this._register_live_callback();
         this._switch_status(this.live_status);
+
+        fb.liveStream.useMic = true;
+        fb.liveStream.useCamera = true;
+        this._register_live_callback();
     },
 
     start () {
@@ -43,16 +46,10 @@ cc.Class({
     },
 
     _register_live_callback(){
-        cc.live_demo = {};
-        cc.live_demo.live_status_changed = (code) => {
-
-            cc.log("receive live callback code is ", code);
-            this.live_status = parseInt(code);
-            this._switch_status(code);
-        };
-        cc.live_demo.live_error = (code) => {
+        fb.liveStream.on("onStatusChanged", this._switch_status.bind(this), this.node);
+        fb.liveStream.on("onError", (code) => {
             cc.error("some error ", code)
-        };
+        }, this.node);
     },
 
     _get_status(){
@@ -75,7 +72,8 @@ cc.Class({
         }
         return name;
     },
-    _switch_status(){
+    _switch_status(code){
+        this.live_status = code;
         this.start_tips.string = this._get_status();
     },
 
@@ -116,17 +114,7 @@ cc.Class({
     },
 
     _event_click(name){
-        if (cc.sys.isNative) {
-            let methodName = `${name}Live`;
-            if (cc.sys.os == cc.sys.OS_ANDROID) {
-                let className = "org.cocos2dx.javascript/FacebookLive";
-                let methodSignature = "()V";
-                jsb.reflection.callStaticMethod(className, methodName, methodSignature);
-            } else if (cc.sys.os == cc.sys.OS_IOS || cc.sys.os == cc.sys.OS_OSX) {
-                jsb.reflection.callStaticMethod("AppController", methodName);
-                // ScriptingCore::getInstance()->executeString("specialModule.wechatShareMsg(0)")
-            }
-        }
+        fb.liveStream[`${name}Live`]();
     }
     // update (dt) {},
 });
